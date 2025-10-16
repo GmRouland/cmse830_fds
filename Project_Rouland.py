@@ -13,6 +13,20 @@ station = pd.read_csv('gwl-stations.csv')
 Uniq_Stats = list(dict.fromkeys(daily['STATION']))
 Merged = pd.merge(daily, station, on = 'STATION', how = 'inner')
 Key_data = Merged[['STATION','MSMT_DATE','WLM_RPE','WLM_GSE','RPE_WSE', 'GSE_WSE','WSE','LATITUDE','LONGITUDE']]
+Sort_KD['MSMT_DATE'] = pd.to_datetime(Sort_KD['MSMT_DATE'])
+Sort_KD = Sort_KD.set_index('MSMT_DATE')
+#This section was completed with the assistance of Google AI Studio version 2.5 10/15/25
+# Group by 'STATION', select the 'value' column, and apply interpolation.
+# The lambda function operates on each group (each station's data) separately.
+Sort_KD['RPE_WSE'] = Sort_KD.groupby('STATION')['RPE_WSE'].transform(
+    lambda group: group.interpolate(method='time').ffill().bfill())
+Sort_KD['GSE_WSE'] = Sort_KD.groupby('STATION')['GSE_WSE'].transform(
+    lambda group: group.interpolate(method='time').ffill().bfill())
+Sort_KD['WSE'] = Sort_KD.groupby('STATION')['WSE'].transform(
+    lambda group: group.interpolate(method='time').ffill().bfill())
+
+# Reset the index to bring 'MSMT_DATE' back as a regular column
+Sort_KD = Sort_KD.reset_index()
 Sort_KD = Key_data.sort_values(by = ['STATION', 'MSMT_DATE'], ascending = True)
 droplist = (Sort_KD['STATION'][Sort_KD['GSE_WSE'].isnull()].unique())
 Data_Final = Sort_KD[~Sort_KD['STATION'].isin(droplist)]
