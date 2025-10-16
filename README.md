@@ -21,3 +21,5 @@ I want to improve my streamlit site beyond the basics and add in interactivity;
   Ability to select any number of stations and compare their statistics and data side by side through multiple graphs. 
   Sliders on the date range for plots. 
   Let the user set thresholds/search for wells that meet certain conditions. 
+
+I also have learned how to utilize github desktop to make pushing files to github simple. 
