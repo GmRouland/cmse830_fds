@@ -34,11 +34,11 @@ Data_Final['Station_Num'] = Data_Final.groupby('STATION').ngroup()
 Coords = Data_Final.groupby('Station_Num')[['LATITUDE', 'LONGITUDE']].first()
 california = folium.Map(max_bounds = True, location=[36.7783, -119.4179], zoom_start=6, min_lat=36,max_lat=40,min_lon=-124,max_lon=-119)
     for i in Coords.index:
-     folium.Marker(
+        folium.Marker(
         location= [Coords.iloc[i,0],Coords.iloc[i,1]],
         tooltip= 'Click Me',  # Optional: tooltip on hover
         popup = f'Station {i}'
-    ).add_to(california)
+        ).add_to(california)
   
 
 ### Site
