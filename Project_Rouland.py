@@ -65,5 +65,5 @@ with tab2:
     #plot of spectral signatures
     st.write("Map")
     st_data = st_folium(california, width=725)
-with tab3: 
+
     
