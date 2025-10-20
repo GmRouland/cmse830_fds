@@ -32,10 +32,11 @@ droplist = (Sort_KD['STATION'][Sort_KD['GSE_WSE'].isnull()].unique())
 Data_Final = Sort_KD[~Sort_KD['STATION'].isin(droplist)]
 Data_Final['Station_Num'] = Data_Final.groupby('STATION').ngroup()
 Coords = Data_Final.groupby('Station_Num')[['LATITUDE', 'LONGITUDE']].first()
+#Done with the assistance of Google AI Studio Gemini 2.5 10/15/25
 california = folium.Map(max_bounds = True, location=[36.7783, -119.4179], zoom_start=6, min_lat=36,max_lat=40,min_lon=-124,max_lon=-119)
 for i in Coords.index:
     folium.CircleMarker(
-    location= [Coords.iloc[i,0],Coords.iloc[i,1]], radius = 5 
+    location= [Coords.iloc[i,0],Coords.iloc[i,1]], radius = 5, 
     tooltip= 'Click Me',  # Optional: tooltip on hover
     popup = f'Station {i}'
     ).add_to(california)
@@ -78,6 +79,7 @@ with tab2:
     st_data = st_folium(california, width=725)
 
 with tab3:
+    #Done with the assistance of Google AI Studio Gemini 2.5 10/19/25
     st.header("Individual Station Analysis")
     
     # Get the valid range of station numbers for user guidance
