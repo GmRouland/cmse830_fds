@@ -45,7 +45,7 @@ for i in Coords.index:
 ### Site
 st.title("Analyzing Central California Groundwater")
 station_short = station[station['STATION'].isin(Uniq_Stats)]
-tab1, tab2 = st.tabs(['Introduction', "Initial Analysis and Data Prep"])
+tab1, tab2, tab3 = st.tabs(['Introduction', "Initial Analysis and Data Prep", "Individual Station Analysis"])
 
 #Functions
 def Line_stat(station = 0, parameter = 'GSE_WSE'):
