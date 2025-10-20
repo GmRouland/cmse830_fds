@@ -77,6 +77,8 @@ with tab1:
         st.write('This dataframe contains the information about the stations, the coordinates are the important part')
         st.dataframe(station)
     st.write('I combined the datasets and began to analyze for missingness')
+    st.dataframe(Key_data)
+    st.dataframe(Key_data.describe())
     fig, ax = plt.subplots(figsize=(8, 10))
     sns.heatmap(Sort_KD.isnull(), cbar=False, yticklabels=False, cmap='viridis', ax=ax)
     ax.set_title('Missing Values in the Combined Dataset')
@@ -85,7 +87,15 @@ with tab1:
 
 with tab2:
     st.header("Initial Analysis and Data Prep")
+    st.write("I sorted the data, encoded each station label to have it's own numeric label for easier reading and mapping and found there was no change in the missingness when sorted by station."
+    st.write("Based on this I found the data to be MCAR and decided to proceed with a simple interpolation. Groundwater data does not drastically shift on a daily basis so interpolating between dates was suitable."
+    st.write("There were a few stations still missing data after interpolation. I discovered these were completely missing all data and decided to remove them due to this. A significant portion of the data remained"
    #California map showing sites
+    fig, ax = plt.subplots(figsize=(8, 10))
+    sns.heatmap(Key_data.isnull(), cbar=False, yticklabels=False, cmap='viridis', ax=ax)
+    ax.set_title('Sorted Data before Removing Completely Missing Data')
+    plt.tight_layout()
+    st.pyplot(fig)
     st.write("Map showing site locations")
     st_data = st_folium(california, width=725)
     
