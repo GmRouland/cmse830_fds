@@ -35,7 +35,7 @@ Coords = Data_Final.groupby('Station_Num')[['LATITUDE', 'LONGITUDE']].first()
 california = folium.Map(max_bounds = True, location=[36.7783, -119.4179], zoom_start=6, min_lat=36,max_lat=40,min_lon=-124,max_lon=-119)
 for i in Coords.index:
     folium.CircleMarker(
-    location= [Coords.iloc[i,0],Coords.iloc[i,1]],
+    location= [Coords.iloc[i,0],Coords.iloc[i,1]], radius = 5 
     tooltip= 'Click Me',  # Optional: tooltip on hover
     popup = f'Station {i}'
     ).add_to(california)
@@ -56,7 +56,18 @@ def Line_stat(station = 0, parameter = 'GSE_WSE'):
 
 with tab1:
     st.header("Introduction")
-    st.write("Overview")
+    st.write("Our Variables")
+    st.markdown("""* Station = Unique Station identifier for most also well number 
+    * MSMT_Data = Date/Time in PST when collected
+    * WLM_RPE = Reference Point Elevation used to collect measurement
+    * WLM_GSE = Ground surface elevation at well site
+    * RPE_WSE = Depth to the water surface in feet below the reference point
+    * GSE_WSE = Depth below ground surface or distance from ground surface to
+    water surface in feet
+    * WSE = Water Surface Elevation in feet above Mean Sea Level
+    * Longitude
+    * Latitude """)
+    
     st.pyplot(Line_stat(10))
 
 
@@ -66,4 +77,63 @@ with tab2:
     st.write("Map")
     st_data = st_folium(california, width=725)
 
+with tab3:
+    st.header("Individual Station Analysis")
     
+    # Get the valid range of station numbers for user guidance
+    max_station_num = Data_Final['Station_Num'].max()
+    
+    # User input for station number
+    station_num_input = st.text_input(
+        f"Enter a Station Number (from 0 to {max_station_num}):"
+    )
+
+    if station_num_input:
+        try:
+            station_num = int(station_num_input)
+
+            # Check if the entered station number is valid
+            if station_num in Coords.index:
+                
+                # Create a two-column layout for the plot and map
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    st.subheader(f"Data Plot for Station {station_num}")
+                    
+                    # Dropdown to select which parameter to plot
+                    parameter = st.selectbox(
+                        "Select a parameter to plot:",
+                        ('GSE_WSE', 'RPE_WSE', 'WSE'), key=f'select_{station_num}'
+                    )
+                    
+                    # Generate and display the plot using your function
+                    fig = Line_stat(station=station_num, parameter=parameter)
+                    st.pyplot(fig)
+
+                with col2:
+                    st.subheader(f"Location of Station {station_num}")
+                    
+                    # Get coordinates for the selected station
+                    station_coords = Coords.loc[station_num]
+                    lat = station_coords['LATITUDE']
+                    lon = station_coords['LONGITUDE']
+                    
+                    # Create a new Folium map centered on the selected station
+                    station_map = folium.Map(location=[lat, lon], zoom_start=14)
+                    folium.Marker(
+                        [lat, lon],
+                        popup=f"Station {station_num}",
+                        tooltip=f"Station {station_num}"
+                    ).add_to(station_map)
+                    
+                    # Display the focused map
+                    st_folium(station_map, width=600, height=500)
+            
+            else:
+                st.error(f"Station number {station_num} is not valid. Please enter a number between 0 and {max_station_num}.")
+
+        except ValueError:
+            st.error("Invalid input. Please enter a valid integer for the station number.")
+    else:
+        st.info("Enter a station number above to see its data and location.")
