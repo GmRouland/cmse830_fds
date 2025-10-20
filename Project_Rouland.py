@@ -13,24 +13,24 @@ station = pd.read_csv('gwl-stations.csv')
 Uniq_Stats = list(dict.fromkeys(daily['STATION']))
 Merged = pd.merge(daily, station, on = 'STATION', how = 'inner')
 Key_data = Merged[['STATION','MSMT_DATE','WLM_RPE','WLM_GSE','RPE_WSE', 'GSE_WSE','WSE','LATITUDE','LONGITUDE']]
-Key_data['MSMT_DATE'] = pd.to_datetime(Key_data['MSMT_DATE'])
+Key_data.loc['MSMT_DATE'] = pd.to_datetime(Key_data['MSMT_DATE'])
 Sort_KD = Key_data.sort_values(by = ['STATION', 'MSMT_DATE'], ascending = True)
 Sort_KD = Sort_KD.set_index('MSMT_DATE')
 #This section was completed with the assistance of Google AI Studio version 2.5 10/15/25
 # Group by 'STATION', select the 'value' column, and apply interpolation.
 # The lambda function operates on each group (each station's data) separately.
-Sort_KD['RPE_WSE'] = Sort_KD.groupby('STATION')['RPE_WSE'].transform(
+Sort_KD.loc['RPE_WSE'] = Sort_KD.groupby('STATION')['RPE_WSE'].transform(
     lambda group: group.interpolate(method='time').ffill().bfill())
-Sort_KD['GSE_WSE'] = Sort_KD.groupby('STATION')['GSE_WSE'].transform(
+Sort_KD.loc['GSE_WSE'] = Sort_KD.groupby('STATION')['GSE_WSE'].transform(
     lambda group: group.interpolate(method='time').ffill().bfill())
-Sort_KD['WSE'] = Sort_KD.groupby('STATION')['WSE'].transform(
+Sort_KD.loc['WSE'] = Sort_KD.groupby('STATION')['WSE'].transform(
     lambda group: group.interpolate(method='time').ffill().bfill())
 
 # Reset the index to bring 'MSMT_DATE' back as a regular column
 Sort_KD = Sort_KD.reset_index()
 droplist = (Sort_KD['STATION'][Sort_KD['GSE_WSE'].isnull()].unique())
 Data_Final = Sort_KD[~Sort_KD['STATION'].isin(droplist)]
-Data_Final['Station_Num'] = Data_Final.groupby('STATION').ngroup()
+Data_Final.loc['Station_Num'] = Data_Final.groupby('STATION').ngroup()
 Coords = Data_Final.groupby('Station_Num')[['LATITUDE', 'LONGITUDE']].first()
 #Done with the assistance of Google AI Studio Gemini 2.5 10/15/25
 california = folium.Map(max_bounds = True, location=[36.7783, -119.4179], zoom_start=6, min_lat=36,max_lat=40,min_lon=-124,max_lon=-119)
