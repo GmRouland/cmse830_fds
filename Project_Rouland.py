@@ -19,11 +19,11 @@ Sort_KD = Sort_KD.set_index('MSMT_DATE')
 #This section was completed with the assistance of Google AI Studio version 2.5 10/15/25
 # Group by 'STATION', select the 'value' column, and apply interpolation.
 # The lambda function operates on each group (each station's data) separately.
-Sort_KD.loc['RPE_WSE'] = Sort_KD.groupby('STATION')['RPE_WSE'].transform(
+Sort_KD['RPE_WSE'] = Sort_KD.groupby('STATION')['RPE_WSE'].transform(
     lambda group: group.interpolate(method='time').ffill().bfill())
-Sort_KD.loc['GSE_WSE'] = Sort_KD.groupby('STATION')['GSE_WSE'].transform(
+Sort_KD['GSE_WSE'] = Sort_KD.groupby('STATION')['GSE_WSE'].transform(
     lambda group: group.interpolate(method='time').ffill().bfill())
-Sort_KD.loc['WSE'] = Sort_KD.groupby('STATION')['WSE'].transform(
+Sort_KD['WSE'] = Sort_KD.groupby('STATION')['WSE'].transform(
     lambda group: group.interpolate(method='time').ffill().bfill())
 
 # Reset the index to bring 'MSMT_DATE' back as a regular column
