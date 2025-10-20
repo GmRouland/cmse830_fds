@@ -82,12 +82,11 @@ with tab1:
     ax.set_title('Missing Values in the Combined Dataset')
     plt.tight_layout()
     st.pyplot(fig)
-    st.write('In order to try and understand where the missingness was I ordered the data by station')
-    fig2 = plt.figure(figsize=(8, 10))
+    fig2, ax2 = plt.subplots(figsize=(8, 10))
     sns.heatmap(Sort_KD.isnull(), cbar=False, yticklabels=False, cmap='viridis', ax=ax2)
-    ax2.set_title('Missing Values in Sorted Dataset')
+    ax.set_title('Missing Values in the Combined Dataset')
     plt.tight_layout()
-    st.pyplot(fig2)
+    st.pyplot(fig)
     
 
 with tab2:
