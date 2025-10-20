@@ -68,15 +68,34 @@ with tab1:
     * WSE = Water Surface Elevation in feet above Mean Sea Level
     * Longitude
     * Latitude """)
+    st.write("Initial Dataframes")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.write('This is the daily data at every station, with the earliest data from 1992')
+        st.dataframe(daily)
+    with col2:
+        st.write('This dataframe contains the information about the stations, the coordinates are the important part')
+        st.dataframe(station)
+    st.write('I combined the datasets and began to analyze for missingness')
+    fig, ax = plt.subplots(figsize=(8, 10))
+    sns.heatmap(Key_data.isnull(), cbar=False, yticklabels=False, cmap='viridis', ax=ax)
+    ax.set_title('Missing Values in the Combined Dataset')
+    plt.tight_layout()
+    st.pyplot(fig)
+    st.write('In order to try and understand where the missingness was I ordered the data by station')
+    fig2, ax2 = plt.figure(figsize=(8, 10))
+    sns.heatmap(Sort_KD.isnull(), cbar=False, yticklabels=False, cmap='viridis', ax=ax2)
+    ax2.set_title('Missing Values in Sorted Dataset')
+    plt.tight_layout()
+    st.pyplot(fig2)
     
-    st.pyplot(Line_stat(10))
-
 
 with tab2:
     st.header("Initial Analysis and Data Prep")
-    #plot of spectral signatures
-    st.write("Map")
+   #California map showing sites
+    st.write("Map showing site locations")
     st_data = st_folium(california, width=725)
+    
 
 with tab3:
     #Done with the assistance of Google AI Studio Gemini 2.5 10/19/25
