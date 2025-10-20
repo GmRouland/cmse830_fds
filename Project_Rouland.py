@@ -78,16 +78,10 @@ with tab1:
         st.dataframe(station)
     st.write('I combined the datasets and began to analyze for missingness')
     fig, ax = plt.subplots(figsize=(8, 10))
-    sns.heatmap(Key_data.isnull(), cbar=False, yticklabels=False, cmap='viridis', ax=ax)
+    sns.heatmap(Sort_KD.isnull(), cbar=False, yticklabels=False, cmap='viridis', ax=ax)
     ax.set_title('Missing Values in the Combined Dataset')
     plt.tight_layout()
     st.pyplot(fig)
-    fig2, ax2 = plt.subplots(figsize=(8, 10))
-    sns.heatmap(Sort_KD.isnull(), cbar=False, yticklabels=False, cmap='viridis', ax=ax2)
-    ax.set_title('Missing Values in the Combined Dataset')
-    plt.tight_layout()
-    st.pyplot(fig)
-    
 
 with tab2:
     st.header("Initial Analysis and Data Prep")
