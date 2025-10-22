@@ -19,6 +19,7 @@ Sort_KD = Sort_KD.set_index('MSMT_DATE')
 #This section was completed with the assistance of Google AI Studio version 2.5 10/15/25
 # Group by 'STATION', select the 'value' column, and apply interpolation.
 # The lambda function operates on each group (each station's data) separately.
+#Try to identify stations that require ffill and bfill and only apply to those ones
 Sort_KD['RPE_WSE'] = Sort_KD.groupby('STATION')['RPE_WSE'].transform(
     lambda group: group.interpolate(method='time').ffill().bfill())
 Sort_KD['GSE_WSE'] = Sort_KD.groupby('STATION')['GSE_WSE'].transform(
@@ -56,6 +57,7 @@ def Line_stat(station = 0, parameter = 'GSE_WSE'):
     return fig
 
 with tab1:
+    #use .head() to show a portion of full dataframe 
     st.header("Introduction")
     st.write("Our Variables")
     st.markdown("""* Station = Unique Station identifier for most also well number 
@@ -72,12 +74,12 @@ with tab1:
     col1, col2 = st.columns(2)
     with col1:
         st.write('This is the daily data at every station, with the earliest data from 1992')
-        st.dataframe(daily)
+        st.dataframe(daily.head())
     with col2:
         st.write('This dataframe contains the information about the stations, the coordinates are the important part')
-        st.dataframe(station)
+        st.dataframe(station.head())
     st.write('I combined the datasets and began to analyze for missingness')
-    st.dataframe(Key_data)
+    st.dataframe(Key_data.head())
     st.dataframe(Key_data.describe())
     fig, ax = plt.subplots(figsize=(8, 10))
     sns.heatmap(Sort_KD.isnull(), cbar=False, yticklabels=False, cmap='viridis', ax=ax)
