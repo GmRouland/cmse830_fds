@@ -30,7 +30,7 @@ Sort_KD['WSE'] = Sort_KD.groupby('STATION')['WSE'].transform(
 # Reset the index to bring 'MSMT_DATE' back as a regular column
 Sort_KD = Sort_KD.reset_index()
 droplist = (Sort_KD['STATION'][Sort_KD['GSE_WSE'].isnull()].unique())
-Data_Final = Sort_KD[~Sort_KD['STATION'].isin(droplist)]
+Data_Final = Sort_KD[~Sort_KD['STATION'].isin(droplist)].copy()
 Data_Final['Station_Num'] = Data_Final.groupby('STATION').ngroup()
 Coords = Data_Final.groupby('Station_Num')[['LATITUDE', 'LONGITUDE']].first()
 #Done with the assistance of Google AI Studio Gemini 2.5 10/15/25
