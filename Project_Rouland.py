@@ -320,7 +320,7 @@ with tab2:
     #st.pyplot(fig)
     st.write("I am utiliziing the streamlit_folium integration to add interactability to the map.")
     st_data = st_folium(california, width=725)
-    st.folium(st_data)
+    st.pyplot(st_data)
 
 with tab3:
     #Done with the assistance of Google AI Studio Gemini 2.5 10/19/25
