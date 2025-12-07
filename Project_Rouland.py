@@ -161,7 +161,8 @@ def comprehensive_stationarity_test(station, parameter = 'GSE_WSE', name='Series
         st.warning("✓✓ Both tests agree: Series is **NON-STATIONARY**")
         st.info("→ Difference the series, or use ARIMA(p,1,q)")
         recommendation = "non-stationary"
-        
+        series = series.diff().dropna()
+        autocor(series)
     else:
         st.error("⚠⚠ Tests DISAGREE - investigate further")
         st.markdown("""
