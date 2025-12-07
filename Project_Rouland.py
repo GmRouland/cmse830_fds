@@ -319,8 +319,8 @@ with tab2:
     #plt.tight_layout()
     #st.pyplot(fig)
     st.write("I am utiliziing the streamlit_folium integration to add interactability to the map.")
-    st_data = st_folium(california, width=725)
-    st.pyplot(st_data)
+    st_folium(california, width=725)
+    
 
 with tab3:
     #Done with the assistance of Google AI Studio Gemini 2.5 10/19/25
