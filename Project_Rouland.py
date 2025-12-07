@@ -161,8 +161,6 @@ def comprehensive_stationarity_test(station, parameter = 'GSE_WSE', name='Series
         st.warning("✓✓ Both tests agree: Series is **NON-STATIONARY**")
         st.info("→ Difference the series, or use ARIMA(p,1,q)")
         recommendation = "non-stationary"
-        series = series.diff().dropna()
-        autocor(series)
     else:
         st.error("⚠⚠ Tests DISAGREE - investigate further")
         st.markdown("""
@@ -180,8 +178,10 @@ def comprehensive_stationarity_test(station, parameter = 'GSE_WSE', name='Series
         
         # Recursive call: Pass auto_diff=False so we only diff once (prevents infinite loop)
             comprehensive_stationarity_test(station, parameter = 'GSE_WSE',name=f"First Diff of {name}", auto_diff=False)
-
-            
+        elif auto_diff and recommendation in ['non-stationary', 'non-stationary']:
+            st.markdown("---")
+            st.info(f"📉 Since {name} is {recommendation}, automatically testing First Difference...")
+            comprehensive_stationarity_test(station, parameter = 'GSE_WSE',name=f"First Diff of {name}", auto_diff=False)
     return {
         'adf_statistic': adf_result[0],
         'adf_pvalue': adf_result[1],
