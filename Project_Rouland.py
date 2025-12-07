@@ -5,7 +5,12 @@ import matplotlib.pyplot as plt
 import streamlit as st 
 import seaborn as sns
 import folium
+import warnings
 from streamlit_folium import st_folium
+from statsmodels.tsa.stattools import adfuller, kpss
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+from statsmodels.tsa.arima.model import ARIMA
+from sklearn.metrics import mean_squared_error
 
 ### Beginning
 ## Additional optimization for memory purposes done with Google AI Studio version 2.5 11/10/25
@@ -79,7 +84,191 @@ def Line_stat(station = 0, parameter = 'GSE_WSE'):
     plt.ylabel(f'{parameter} (feet)')
     plt.tight_layout()
     return fig
+def autocor(series, parameter = 'GSE_WSE'):
+    fig, axes = plt.subplots(3, 1, figsize=(12, 10))
+    # station_data = Data_Final[Data_Final['Station_Num'] == station]
+    data = series
+    axes[0].plot(data.index, data.values)
+    axes[0].set_title('Time Series')
+    axes[0].set_ylabel('Value')
+    axes[0].grid(True, alpha=0.3)
+                
+    # ACF
+    plot_acf(data, lags=40, ax=axes[1], alpha=0.05)
+    axes[1].set_title('Autocorrelation Function')
+                
+    # PACF  
+    plot_pacf(data, lags=40, ax=axes[2], alpha=0.05)
+    axes[2].set_title('Partial Autocorrelation Function')
+    st.pyplot(fig)            
+    
+def comprehensive_stationarity_test(station, parameter = 'GSE_WSE', name='Series',auto_diff= True):
+    """Run ADF and KPSS tests with interpretation for Streamlit"""
+    
+    if auto_diff == True:
+        station_data = Data_Final[Data_Final['Station_Num'] == station]
+        series = station_data[parameter]
+    else:
+        station_data = Data_Final[Data_Final['Station_Num'] == station]
+        series = station_data[parameter].diff().dropna()
+    st.subheader(f"Stationarity Tests for {name}")
+    
+    # Create two columns for side-by-side comparison
+    col1, col2 = st.columns(2)
+    
+    # --- ADF Test (H0: unit root / non-stationary) ---
+    with col1:
+        st.markdown("#### 1. ADF Test")
+        st.caption("Null Hypothesis (H0): Non-stationary")
+        
+        adf_result = adfuller(series, autolag='AIC')
+        
+        # Display metrics nicely
+        st.write(f"**Test Statistic:** {adf_result[0]:.4f}")
+        st.write(f"**p-value:** {adf_result[1]:.4f}")
+        st.write(f"**Lags used:** {adf_result[2]}")
+        
+        if adf_result[1] < 0.05:
+            adf_conclusion = "STATIONARY"
+            st.success("✓ Reject H0: Evidence for stationarity")
+        else:
+            adf_conclusion = "NON-STATIONARY"
+            st.warning("✗ Fail to reject H0: Evidence for unit root")
 
+    # --- KPSS Test (H0: stationary) ---
+    with col2:
+        st.markdown("#### 2. KPSS Test")
+        st.caption("Null Hypothesis (H0): Stationary")
+        
+        # Catch warnings often thrown by KPSS
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            kpss_result = kpss(series, regression='c', nlags='auto')
+        
+        st.write(f"**Test Statistic:** {kpss_result[0]:.4f}")
+        st.write(f"**p-value:** {kpss_result[1]:.4f}")
+        st.write(f"**Lags used:** {kpss_result[2]}")
+        
+        if kpss_result[1] > 0.05:
+            kpss_conclusion = "STATIONARY"
+            st.success("✓ Fail to reject H0: Evidence for stationarity")
+        else:
+            kpss_conclusion = "NON-STATIONARY"
+            st.warning("✗ Reject H0: Evidence for non-stationarity")
+    
+    # --- Combined interpretation ---
+    st.divider()
+    st.markdown("### Combined Interpretation")
+    
+    if adf_conclusion == "STATIONARY" and kpss_conclusion == "STATIONARY":
+        st.success("✓✓ Both tests agree: Series is **STATIONARY**")
+        st.info("→ Use AR(p) model without differencing")
+        recommendation = "stationary"
+        autocor(series)
+    elif adf_conclusion == "NON-STATIONARY" and kpss_conclusion == "NON-STATIONARY":
+        st.warning("✓✓ Both tests agree: Series is **NON-STATIONARY**")
+        st.info("→ Difference the series, or use ARIMA(p,1,q)")
+        recommendation = "non-stationary"
+        
+    else:
+        st.error("⚠⚠ Tests DISAGREE - investigate further")
+        st.markdown("""
+        **Possible causes:**
+        * Structural breaks in the data
+        * Near unit root (highly persistent but stationary)
+        * Small sample size
+        
+        **Recommendation:** Check for breaks, try differencing, and retest.
+        """)
+        recommendation = "ambiguous"
+        if auto_diff and recommendation in ['non-stationary', 'ambiguous']:
+            st.markdown("---")
+            st.info(f"📉 Since {name} is {recommendation}, automatically testing First Difference...")
+        
+        # Recursive call: Pass auto_diff=False so we only diff once (prevents infinite loop)
+            comprehensive_stationarity_test(station, parameter = 'GSE_WSE',name=f"First Diff of {name}", auto_diff=False)
+
+            
+    return {
+        'adf_statistic': adf_result[0],
+        'adf_pvalue': adf_result[1],
+        'kpss_statistic': kpss_result[0],
+        'kpss_pvalue': kpss_result[1],
+        'recommendation': recommendation
+    }
+def fit_ar_manual(data, p):
+    """
+    Fit AR(p) model using ordinary least squares
+    
+    Parameters
+    ----------
+    data : array-like
+        Time series data (1D array or Series)
+    p : int
+        Number of autoregressive lags
+        
+    Returns
+    -------
+    coefficients : ndarray
+        Estimated coefficients [c, φ_1, φ_2, ..., φ_p]
+        where c is the constant/intercept term
+    """
+    data = np.asarray(data).flatten()
+    T = len(data)
+    
+    # Step 1: Create design matrix X (T-p rows, p+1 columns)
+    X = np.ones((T - p, p + 1))  # Initialize with ones for constant
+    
+    # Fill in lagged values
+    for i in range(p):
+        X[:, i + 1] = data[p - 1 - i : T - 1 - i]
+    
+    # Step 2: Create response vector y (T-p rows)
+    y = data[p:]
+    
+    # Step 3: Solve using OLS: β = (X'X)^(-1) X'y
+    # Using lstsq is numerically more stable than computing inverse explicitly
+    coefficients, _, _, _ = np.linalg.lstsq(X, y, rcond=None)
+    
+    return coefficients
+
+
+def forecast_ar_manual(data, coefficients, steps):
+    """
+    Generate multi-step forecasts from fitted AR model
+    
+    Parameters
+    ----------
+    data : array-like
+        Historical time series data
+    coefficients : ndarray
+        Model coefficients [c, φ_1, φ_2, ..., φ_p]
+    steps : int
+        Number of steps ahead to forecast
+        
+    Returns
+    -------
+    forecasts : ndarray
+        Array of forecasted values
+    """
+    data = np.asarray(data).flatten()
+    p = len(coefficients) - 1
+    c = coefficients[0]
+    phi = coefficients[1:]
+    
+    # Initialize history with last p observations
+    history = list(data[-p:])
+    
+    forecasts = []
+    for _ in range(steps):
+        # One-step forecast: c + φ_1*y_{t-1} + φ_2*y_{t-2} + ... + φ_p*y_{t-p}
+        yhat = c + sum(phi[i] * history[-(i + 1)] for i in range(p))
+        forecasts.append(yhat)
+        history.append(yhat)  # Add forecast to history for next iteration
+    
+    return np.array(forecasts)
+
+# Actual Streamlit Site
 with tab1:
     #use .head() to show a portion of full dataframe 
     st.header("Introduction")
@@ -195,7 +384,89 @@ with tab3:
                     
                     # Display the focused map
                     st_folium(station_map, width=600, height=500)
-            
+                comprehensive_stationarity_test(station_num,parameter, f'Station {station_num}')
+                # Split data into train/test
+                # Hold out last 30 days for testing
+                station_data = Data_Final[Data_Final['Station_Num'] == station_num]
+                data = station_data[parameter].diff().dropna()
+                train_size = len(data) - 30
+                train = data[:train_size]
+                test = data[train_size:]
+                
+                print(f"Training size: {len(train)} days")
+                print(f"Test size: {len(test)} days")
+                
+                # Fit with your implementation
+                p = 3  # Start with AR(5)
+                print(f"\nFitting AR({p}) model...")
+                
+                manual_coef = fit_ar_manual(train.values, p)
+                manual_forecast = forecast_ar_manual(train.values, manual_coef, len(test))
+                
+                # Compare with statsmodels ARIMA
+                arima_model = ARIMA(train, order=(p, 0, 0))
+                arima_fit = arima_model.fit()
+                arima_forecast = arima_fit.forecast(steps=len(test))
+                
+                # Validation
+                print("\n" + "="*70)
+                print("VALIDATION: Your Implementation vs. Statsmodels ARIMA")
+                print("="*70)
+                
+                print(f"\nCoefficients comparison:")
+                print(f"Your implementation:  {manual_coef}")
+                print(f"ARIMA implementation: {arima_fit.params.values}")
+                coef_diff = np.abs(manual_coef - arima_fit.params.values).max()
+                print(f"Maximum difference:   {coef_diff:.8f}")
+                
+                if coef_diff < 0.001:
+                    print("✓ Coefficients match! (difference < 0.001)")
+                else:
+                    print("✗ Coefficients don't match - check your implementation")
+                
+                print(f"\nForecast comparison:")
+                manual_rmse = np.sqrt(mean_squared_error(test, manual_forecast))
+                arima_rmse = np.sqrt(mean_squared_error(test, arima_forecast))
+                print(f"Your RMSE:   {manual_rmse:.4f}")
+                print(f"ARIMA RMSE:  {arima_rmse:.4f}")
+                forecast_diff = np.abs(manual_forecast - arima_forecast).max()
+                print(f"Maximum forecast difference: {forecast_diff:.8f}")
+                
+                if forecast_diff < 0.0001:
+                    print("✓ Forecasts match! (difference < 0.0001)")
+                else:
+                    print("✗ Forecasts don't match - check your implementation")
+                
+                print("="*70)
+                
+                # Visualization
+                fig, axes = plt.subplots(2, 1, figsize=(14, 10))
+                
+                # Full series with train/test split
+                axes[0].plot(train.index, train.values, label='Training Data', alpha=0.7, linewidth=0.5)
+                axes[0].plot(test.index, test.values, label='Actual Test Data', linewidth=1.5, color='black')
+                axes[0].plot(test.index, manual_forecast, '--', label='Your AR Forecast', linewidth=2)
+                axes[0].plot(test.index, arima_forecast, ':', label='ARIMA Forecast', linewidth=2, alpha=0.7)
+                axes[0].axvline(train.index[-1], color='red', linestyle='--', alpha=0.5, label='Train/Test Split')
+                axes[0].axhline(0, color='gray', linestyle='-', alpha=0.3, linewidth=0.5)
+                axes[0].legend()
+                axes[0].set_title(f'AR({p}) Forecast: {your_series_name}')
+                axes[0].set_ylabel('Return (%)')
+                axes[0].grid(True, alpha=0.3)
+                
+                # Zoom in on test period
+                axes[1].plot(test.index, test.values, 'o-', label='Actual', linewidth=2, markersize=4)
+                axes[1].plot(test.index, manual_forecast, 's--', label='Your Forecast', linewidth=2, markersize=4)
+                axes[1].plot(test.index, arima_forecast, '^:', label='ARIMA Forecast', linewidth=2, 
+                             markersize=4, alpha=0.7)
+                axes[1].axhline(0, color='gray', linestyle='-', alpha=0.3)
+                axes[1].legend()
+                axes[1].set_title('Test Period Detail')
+                axes[1].set_xlabel('Date')
+                axes[1].set_ylabel('Return (%)')
+                axes[1].grid(True, alpha=0.3)
+                
+                st.pyplot(fig)
             else:
                 st.error(f"Station number {station_num} is not valid. Please enter a number between 0 and {max_station_num}.")
 
