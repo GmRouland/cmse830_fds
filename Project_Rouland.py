@@ -94,28 +94,31 @@ def autocor(series, parameter = 'GSE_WSE'):
     axes[2].set_title('Partial Autocorrelation Function')
     st.pyplot(fig)            
     
-def comprehensive_stationarity_test(station, parameter = 'GSE_WSE', name='Series',auto_diff= True):
+def comprehensive_stationarity_test(station, parameter='GSE_WSE', name='Series', auto_diff=True):
     """Run ADF and KPSS tests with interpretation for Streamlit"""
     
-    if auto_diff == True:
+    # --- 1. Data Retrieval ---
+    # Ensure Data_Final is accessible or passed in. 
+    # Assumes Data_Final is a global DataFrame.
+    if auto_diff:
         station_data = Data_Final[Data_Final['Station_Num'] == station]
         series = station_data[parameter]
     else:
         station_data = Data_Final[Data_Final['Station_Num'] == station]
         series = station_data[parameter].diff().dropna()
+
     st.subheader(f"Stationarity Tests for {name}")
     
     # Create two columns for side-by-side comparison
     col1, col2 = st.columns(2)
     
-    # --- ADF Test (H0: unit root / non-stationary) ---
+    # --- 2. ADF Test ---
     with col1:
         st.markdown("#### 1. ADF Test")
         st.caption("Null Hypothesis (H0): Non-stationary")
         
         adf_result = adfuller(series, autolag='AIC')
         
-        # Display metrics nicely
         st.write(f"**Test Statistic:** {adf_result[0]:.4f}")
         st.write(f"**p-value:** {adf_result[1]:.4f}")
         st.write(f"**Lags used:** {adf_result[2]}")
@@ -127,12 +130,11 @@ def comprehensive_stationarity_test(station, parameter = 'GSE_WSE', name='Series
             adf_conclusion = "NON-STATIONARY"
             st.warning("✗ Fail to reject H0: Evidence for unit root")
 
-    # --- KPSS Test (H0: stationary) ---
+    # --- 3. KPSS Test ---
     with col2:
         st.markdown("#### 2. KPSS Test")
         st.caption("Null Hypothesis (H0): Stationary")
         
-        # Catch warnings often thrown by KPSS
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             kpss_result = kpss(series, regression='c', nlags='auto')
@@ -148,7 +150,7 @@ def comprehensive_stationarity_test(station, parameter = 'GSE_WSE', name='Series
             kpss_conclusion = "NON-STATIONARY"
             st.warning("✗ Reject H0: Evidence for non-stationarity")
     
-    # --- Combined interpretation ---
+    # --- 4. Interpretation ---
     st.divider()
     st.markdown("### Combined Interpretation")
     
@@ -157,7 +159,7 @@ def comprehensive_stationarity_test(station, parameter = 'GSE_WSE', name='Series
         st.success("✓✓ Both tests agree: Series is **STATIONARY**")
         st.info("→ Use AR(p) model without differencing")
         
-        # Run autocor here
+        # Run autocor logic
         autocor(series)
 
     elif adf_conclusion == "NON-STATIONARY" and kpss_conclusion == "NON-STATIONARY":
@@ -165,9 +167,12 @@ def comprehensive_stationarity_test(station, parameter = 'GSE_WSE', name='Series
         st.warning("✓✓ Both tests agree: Series is **NON-STATIONARY**")
         st.info("→ Difference the series, or use ARIMA(p,1,q)")
         
-        # Run autocor here (As you requested)
-        autocor(series)
+        # Run autocor logic
+        autocor(series) 
         
+        # REMOVED recursive call here to avoid "Double Printing" 
+        # (It is handled in step 5 below)
+
     else:
         recommendation = "ambiguous"
         st.error("⚠⚠ Tests DISAGREE - investigate further")
@@ -177,24 +182,23 @@ def comprehensive_stationarity_test(station, parameter = 'GSE_WSE', name='Series
         * Near unit root
         * Small sample size
         """)
-        # You can decide if you want autocor here too.
-        # autocor(series) 
+        # autocor(series) # Optional: uncomment if you want charts for ambiguous data
 
-    # --- 5. Recursive Logic (MOVED OUTSIDE the if/else chain) ---
-    # This ensures it runs for both Non-Stationary AND Ambiguous results
+    # --- 5. Recursive Logic ---
+    # Moved outside the if/else chain to handle both Non-Stationary AND Ambiguous
     if auto_diff and recommendation in ['non-stationary', 'ambiguous']:
         st.markdown("---")
         st.info(f"📉 Since {name} is {recommendation}, automatically testing First Difference...")
         
-        # Recursive call: 
-        # 1. Pass auto_diff=False to stop infinite loops
-        # 2. Pass the correct 'parameter' variable, not the hardcoded string
         comprehensive_stationarity_test(
             station, 
             parameter=parameter, 
             name=f"First Diff of {name}", 
             auto_diff=False
         )
+
+    # FIXED: Added 'return' keyword
+    return {
         'adf_statistic': adf_result[0],
         'adf_pvalue': adf_result[1],
         'kpss_statistic': kpss_result[0],
@@ -324,14 +328,14 @@ with tab2:
     #plt.tight_layout()
     #st.pyplot(fig)
     california = folium.Map(max_bounds = True, location=[36.7783, -121.4179], zoom_start=6, min_lat=36,max_lat=40,min_lon=-124,max_lon=-119)
-for i in Coords.index:
-    folium.CircleMarker(
-    location= [Coords.iloc[i,0],Coords.iloc[i,1]], radius = 5, 
-    tooltip= 'Click Me',  # Optional: tooltip on hover
-    popup = f'Station {i}'
-    ).add_to(california)
-st.write("I am utiliziing the streamlit_folium integration to add interactability to the map.")
-st_data = st_folium(california, width=725)
+    for i in Coords.index:
+        folium.CircleMarker(
+        location= [Coords.iloc[i,0],Coords.iloc[i,1]], radius = 5, 
+        tooltip= 'Click Me',  # Optional: tooltip on hover
+        popup = f'Station {i}'
+        ).add_to(california)
+    st.write("I am utiliziing the streamlit_folium integration to add interactability to the map.")
+    st_data = st_folium(california, width=725)
     
 with tab3:
     #Done with the assistance of Google AI Studio Gemini 2.5 10/19/25
@@ -350,138 +354,129 @@ with tab3:
     max_station_num = Data_Final['Station_Num'].max()
     
     # User input for station number
-    station_num_input = st.text_input(
+    station_num = st.number_input(
         f"Enter a Station Number (from 0 to {max_station_num}):"
     )
-
-    if station_num_input:
-        try:
-            station_num = int(station_num_input)
-
             # Check if the entered station number is valid
-            if station_num in Coords.index:
-                
-                # Create a two-column layout for the plot and map
-                col1, col2 = st.columns(2)
+    if station_num in Coords.index:
+            
+        # Create a two-column layout for the plot and map
+        col1, col2 = st.columns(2)
 
-                with col1:
-                    st.subheader(f"Data Plot for Station {station_num}")
-                    
-                    # Dropdown to select which parameter to plot
-                    parameter = st.selectbox(
-                        "Select a parameter to plot:",
-                        ('GSE_WSE', 'RPE_WSE', 'WSE'), key=f'select_{station_num}'
-                    )
-                    
-                    # Generate and display the plot using your function
-                    fig = Line_stat(station=station_num, parameter=parameter)
-                    st.pyplot(fig)
+        with col1:
+            st.subheader(f"Data Plot for Station {station_num}")
+            
+            # Dropdown to select which parameter to plot
+            parameter = st.selectbox(
+                "Select a parameter to plot:",
+                ('GSE_WSE', 'RPE_WSE', 'WSE'), key=f'select_{station_num}'
+            )
+            
+            # Generate and display the plot using your function
+            fig = Line_stat(station=station_num, parameter=parameter)
+            st.pyplot(fig)
 
-                with col2:
-                    st.subheader(f"Location of Station {station_num}")
-                    
-                    # Get coordinates for the selected station
-                    station_coords = Coords.loc[station_num]
-                    lat = station_coords['LATITUDE']
-                    lon = station_coords['LONGITUDE']
-                    
-                    # Create a new Folium map centered on the selected station
-                    station_map = folium.Map(location=[lat, lon], zoom_start=14)
-                    folium.Marker(
-                        [lat, lon],
-                        popup=f"Station {station_num}",
-                        tooltip=f"Station {station_num}"
-                    ).add_to(station_map)
-                    
-                    # Display the focused map
-                    st_folium(station_map, width=600, height=500)
-                comprehensive_stationarity_test(station_num,parameter, f'Station {station_num}')
-                # Split data into train/test
-                # Hold out last 30 days for testing
-                station_data = Data_Final[Data_Final['Station_Num'] == station_num]
-                data = station_data[parameter].diff().dropna()
-                train_size = len(data) - 30
-                train = data[:train_size]
-                test = data[train_size:]
-                
-                print(f"Training size: {len(train)} days")
-                print(f"Test size: {len(test)} days")
-                
-                # Fit with your implementation
-                p = 3  # Start with AR(5)
-                print(f"\nFitting AR({p}) model...")
-                
-                manual_coef = fit_ar_manual(train.values, p)
-                manual_forecast = forecast_ar_manual(train.values, manual_coef, len(test))
-                
-                # Compare with statsmodels ARIMA
-                arima_model = ARIMA(train, order=(p, 0, 0))
-                arima_fit = arima_model.fit()
-                arima_forecast = arima_fit.forecast(steps=len(test))
-                
-                # Validation
-                print("\n" + "="*70)
-                print("VALIDATION: Your Implementation vs. Statsmodels ARIMA")
-                print("="*70)
-                
-                print(f"\nCoefficients comparison:")
-                print(f"Your implementation:  {manual_coef}")
-                print(f"ARIMA implementation: {arima_fit.params.values}")
-                coef_diff = np.abs(manual_coef - arima_fit.params.values).max()
-                print(f"Maximum difference:   {coef_diff:.8f}")
-                
-                if coef_diff < 0.001:
-                    print("✓ Coefficients match! (difference < 0.001)")
-                else:
-                    print("✗ Coefficients don't match - check your implementation")
-                
-                print(f"\nForecast comparison:")
-                manual_rmse = np.sqrt(mean_squared_error(test, manual_forecast))
-                arima_rmse = np.sqrt(mean_squared_error(test, arima_forecast))
-                print(f"Your RMSE:   {manual_rmse:.4f}")
-                print(f"ARIMA RMSE:  {arima_rmse:.4f}")
-                forecast_diff = np.abs(manual_forecast - arima_forecast).max()
-                print(f"Maximum forecast difference: {forecast_diff:.8f}")
-                
-                if forecast_diff < 0.0001:
-                    print("✓ Forecasts match! (difference < 0.0001)")
-                else:
-                    print("✗ Forecasts don't match - check your implementation")
-                
-                print("="*70)
-                
-                # Visualization
-                fig, axes = plt.subplots(2, 1, figsize=(14, 10))
-                
-                # Full series with train/test split
-                axes[0].plot(train.index, train.values, label='Training Data', alpha=0.7, linewidth=0.5)
-                axes[0].plot(test.index, test.values, label='Actual Test Data', linewidth=1.5, color='black')
-                axes[0].plot(test.index, manual_forecast, '--', label='Your AR Forecast', linewidth=2)
-                axes[0].plot(test.index, arima_forecast, ':', label='ARIMA Forecast', linewidth=2, alpha=0.7)
-                axes[0].axvline(train.index[-1], color='red', linestyle='--', alpha=0.5, label='Train/Test Split')
-                axes[0].axhline(0, color='gray', linestyle='-', alpha=0.3, linewidth=0.5)
-                axes[0].legend()
-                axes[0].set_title(f'AR({p}) Forecast: {your_series_name}')
-                axes[0].set_ylabel('Return (%)')
-                axes[0].grid(True, alpha=0.3)
-                
-                # Zoom in on test period
-                axes[1].plot(test.index, test.values, 'o-', label='Actual', linewidth=2, markersize=4)
-                axes[1].plot(test.index, manual_forecast, 's--', label='Your Forecast', linewidth=2, markersize=4)
-                axes[1].plot(test.index, arima_forecast, '^:', label='ARIMA Forecast', linewidth=2, 
-                             markersize=4, alpha=0.7)
-                axes[1].axhline(0, color='gray', linestyle='-', alpha=0.3)
-                axes[1].legend()
-                axes[1].set_title('Test Period Detail')
-                axes[1].set_xlabel('Date')
-                axes[1].set_ylabel('Return (%)')
-                axes[1].grid(True, alpha=0.3)
-                
-                st.pyplot(fig)
-            else:
-                st.error(f"Station number {station_num} is not valid. Please enter a number between 0 and {max_station_num}.")
-
-        except ValueError:
-            st.error("Invalid input. Please enter a valid integer for the station number.")
+        with col2:
+            st.subheader(f"Location of Station {station_num}")
+            
+            # Get coordinates for the selected station
+            station_coords = Coords.loc[station_num]
+            lat = station_coords['LATITUDE']
+            lon = station_coords['LONGITUDE']
+            
+            # Create a new Folium map centered on the selected station
+            station_map = folium.Map(location=[lat, lon], zoom_start=14)
+            folium.Marker(
+                [lat, lon],
+                popup=f"Station {station_num}",
+                tooltip=f"Station {station_num}"
+            ).add_to(station_map)
+            
+            # Display the focused map
+            st_folium(station_map, width=600, height=500)
+        comprehensive_stationarity_test(station_num,parameter, f'Station {station_num}')
+        # Split data into train/test
+        # Hold out last 30 days for testing
+        station_data = Data_Final[Data_Final['Station_Num'] == station_num]
+        data = station_data[parameter].diff().dropna()
+        train_size = len(data) - 30
+        train = data[:train_size]
+        test = data[train_size:]
+        
+        print(f"Training size: {len(train)} days")
+        print(f"Test size: {len(test)} days")
+        
+        # Fit with your implementation
+        p = 2  # Start with AR(5)
+        print(f"\nFitting AR({p}) model...")
+        
+        manual_coef = fit_ar_manual(train.values, p)
+        manual_forecast = forecast_ar_manual(train.values, manual_coef, len(test))
+        
+        # Compare with statsmodels ARIMA
+        arima_model = ARIMA(train, order=(p, 0, 0), trend = 'n')
+        arima_fit = arima_model.fit()
+        arima_forecast = arima_fit.forecast(steps=len(test))
+        
+        # Validation
+        print("\n" + "="*70)
+        print("VALIDATION: Your Implementation vs. Statsmodels ARIMA")
+        print("="*70)
+        
+        print(f"\nCoefficients comparison:")
+        print(f"Your implementation:  {manual_coef}")
+        print(f"ARIMA implementation: {arima_fit.params.values}")
+        coef_diff = np.abs(manual_coef - arima_fit.params.values).max()
+        print(f"Maximum difference:   {coef_diff:.8f}")
+        
+        if coef_diff < 0.001:
+            print("✓ Coefficients match! (difference < 0.001)")
+        else:
+            print("✗ Coefficients don't match - check your implementation")
+        
+        print(f"\nForecast comparison:")
+        manual_rmse = np.sqrt(mean_squared_error(test, manual_forecast))
+        arima_rmse = np.sqrt(mean_squared_error(test, arima_forecast))
+        print(f"Your RMSE:   {manual_rmse:.4f}")
+        print(f"ARIMA RMSE:  {arima_rmse:.4f}")
+        forecast_diff = np.abs(manual_forecast - arima_forecast).max()
+        print(f"Maximum forecast difference: {forecast_diff:.8f}")
+        
+        if forecast_diff < 0.0001:
+            print("✓ Forecasts match! (difference < 0.0001)")
+        else:
+            print("✗ Forecasts don't match - check your implementation")
+        
+        print("="*70)
+        
+        # Visualization
+        fig, axes = plt.subplots(2, 1, figsize=(14, 10))
+        
+        # Full series with train/test split
+        axes[0].plot(train.index, train.values, label='Training Data', alpha=0.7, linewidth=0.5)
+        axes[0].plot(test.index, test.values, label='Actual Test Data', linewidth=1.5, color='black')
+        axes[0].plot(test.index, manual_forecast, '--', label='Your AR Forecast', linewidth=2)
+        axes[0].plot(test.index, arima_forecast, ':', label='ARIMA Forecast', linewidth=2, alpha=0.7)
+        axes[0].axvline(train.index[-1], color='red', linestyle='--', alpha=0.5, label='Train/Test Split')
+        axes[0].axhline(0, color='gray', linestyle='-', alpha=0.3, linewidth=0.5)
+        axes[0].legend()
+        axes[0].set_title(f'AR({p}) Forecast: Station {station_num}')
+        axes[0].set_ylabel('Return (%)')
+        axes[0].grid(True, alpha=0.3)
+        
+        # Zoom in on test period
+        axes[1].plot(test.index, test.values, 'o-', label='Actual', linewidth=2, markersize=4)
+        axes[1].plot(test.index, manual_forecast, 's--', label='Your Forecast', linewidth=2, markersize=4)
+        axes[1].plot(test.index, arima_forecast, '^:', label='ARIMA Forecast', linewidth=2, 
+                     markersize=4, alpha=0.7)
+        axes[1].axhline(0, color='gray', linestyle='-', alpha=0.3)
+        axes[1].legend()
+        axes[1].set_title('Test Period Detail')
+        axes[1].set_xlabel('Date')
+        axes[1].set_ylabel('Return (%)')
+        axes[1].grid(True, alpha=0.3)
+        
+        st.pyplot(fig)
     else:
-        st.info("Enter a station number above to see its data and location.")
+        st.error(f"Station number {station_num} is not valid. Please enter a number between 0 and {max_station_num}.")
+
