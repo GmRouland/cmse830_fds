@@ -327,10 +327,10 @@ with tab2:
     #ax.set_title('Sorted Data before Removing Completely Missing Data')
     #plt.tight_layout()
     #st.pyplot(fig)
-    california = folium.Map(max_bounds = True, location=[36.7783, -121.4179], zoom_start=6, min_lat=36,max_lat=40,min_lon=-124,max_lon=-119)
+    california = folium.Map(max_bounds = True, location=[36.7783, -120.4179], zoom_start=6, min_lat=36,max_lat=40,min_lon=-124,max_lon=-119)
     for i in Coords.index:
         folium.CircleMarker(
-        location= [Coords.iloc[i,0],Coords.iloc[i,1]], radius = 5, 
+        location= [Coords.iloc[i,0],Coords.iloc[i,1]], radius = 2, 
         tooltip= 'Click Me',  # Optional: tooltip on hover
         popup = f'Station {i}'
         ).add_to(california)
