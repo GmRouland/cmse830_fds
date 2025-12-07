@@ -153,36 +153,48 @@ def comprehensive_stationarity_test(station, parameter = 'GSE_WSE', name='Series
     st.markdown("### Combined Interpretation")
     
     if adf_conclusion == "STATIONARY" and kpss_conclusion == "STATIONARY":
+        recommendation = "stationary"
         st.success("✓✓ Both tests agree: Series is **STATIONARY**")
         st.info("→ Use AR(p) model without differencing")
-        recommendation = "stationary"
+        
+        # Run autocor here
         autocor(series)
+
     elif adf_conclusion == "NON-STATIONARY" and kpss_conclusion == "NON-STATIONARY":
+        recommendation = "non-stationary"
         st.warning("✓✓ Both tests agree: Series is **NON-STATIONARY**")
         st.info("→ Difference the series, or use ARIMA(p,1,q)")
-        recommendation = "non-stationary"
+        
+        # Run autocor here (As you requested)
+        autocor(series)
+        
     else:
+        recommendation = "ambiguous"
         st.error("⚠⚠ Tests DISAGREE - investigate further")
         st.markdown("""
         **Possible causes:**
         * Structural breaks in the data
-        * Near unit root (highly persistent but stationary)
+        * Near unit root
         * Small sample size
-        
-        **Recommendation:** Check for breaks, try differencing, and retest.
         """)
-        recommendation = "ambiguous"
-        if auto_diff and recommendation in ['non-stationary', 'ambiguous']:
-            st.markdown("---")
-            st.info(f"📉 Since {name} is {recommendation}, automatically testing First Difference...")
+        # You can decide if you want autocor here too.
+        # autocor(series) 
+
+    # --- 5. Recursive Logic (MOVED OUTSIDE the if/else chain) ---
+    # This ensures it runs for both Non-Stationary AND Ambiguous results
+    if auto_diff and recommendation in ['non-stationary', 'ambiguous']:
+        st.markdown("---")
+        st.info(f"📉 Since {name} is {recommendation}, automatically testing First Difference...")
         
-        # Recursive call: Pass auto_diff=False so we only diff once (prevents infinite loop)
-            comprehensive_stationarity_test(station, parameter = 'GSE_WSE',name=f"First Diff of {name}", auto_diff=False)
-        elif auto_diff and recommendation in ['non-stationary', 'non-stationary']:
-            st.markdown("---")
-            st.info(f"📉 Since {name} is {recommendation}, automatically testing First Difference...")
-            comprehensive_stationarity_test(station, parameter = 'GSE_WSE',name=f"First Diff of {name}", auto_diff=False)
-    return {
+        # Recursive call: 
+        # 1. Pass auto_diff=False to stop infinite loops
+        # 2. Pass the correct 'parameter' variable, not the hardcoded string
+        comprehensive_stationarity_test(
+            station, 
+            parameter=parameter, 
+            name=f"First Diff of {name}", 
+            auto_diff=False
+        )
         'adf_statistic': adf_result[0],
         'adf_pvalue': adf_result[1],
         'kpss_statistic': kpss_result[0],
